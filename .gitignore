@@ -1,0 +1,41 @@
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+secrets.yaml
+secret.yaml
+k8s/secrets.yaml
+
+# Terraform state and sensitive files
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+crash.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Node.js
+node_modules/
+dist/
+
+# Local files
+.DS_Store
+.vscode/
+.idea/
+
+# Additional Terraform protection
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log

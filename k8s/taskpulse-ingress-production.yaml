@@ -1,0 +1,30 @@
+# Replace the three Cognito values using Terraform outputs before applying.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: taskpulse
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS": 443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: '443'
+    alb.ingress.kubernetes.io/certificate-arn: "arn:aws:acm:ap-south-1:400790842570:certificate/593a71f1-ad39-4e92-a830-f40d994cf934"
+    alb.ingress.kubernetes.io/inbound-cidrs: "0.0.0.0/0"
+    alb.ingress.kubernetes.io/auth-type: cognito
+    alb.ingress.kubernetes.io/auth-on-unauthenticated-request: authenticate
+    alb.ingress.kubernetes.io/auth-scope: "openid email"
+    alb.ingress.kubernetes.io/auth-session-timeout: "3600"
+    alb.ingress.kubernetes.io/auth-idp-cognito: '{"userPoolARN":".....","userPoolClientID":"...","userPoolDomain":"..."}'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: taskpulse.smokebyte.space
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend-service
+                port:
+                  number: 80

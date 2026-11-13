@@ -1,0 +1,65 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: secretpassword
+      POSTGRES_DB: taskpulse
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d taskpulse"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  migrate:
+    build: ./backend
+    command: ["python", "migrate.py"]
+    environment:
+      DB_HOST: db
+      DB_USER: admin
+      DB_PASSWORD: secretpassword
+      DB_NAME: taskpulse
+      DB_SSLMODE: disable
+      DB_AUTH_MODE: password
+    depends_on:
+      db:
+        condition: service_healthy
+
+  backend:
+    build: ./backend
+    ports:
+      - "127.0.0.1:5000:5000"
+    environment:
+      DB_HOST: db
+      DB_USER: admin
+      DB_PASSWORD: secretpassword
+      DB_NAME: taskpulse
+      DB_SSLMODE: disable
+      DB_AUTH_MODE: password
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "from urllib.request import urlopen; urlopen('http://127.0.0.1:5000/readyz', timeout=2)"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    networks:
+      default:
+        aliases:
+          - backend-service
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  pgdata:

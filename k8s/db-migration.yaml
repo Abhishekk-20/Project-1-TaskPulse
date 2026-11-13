@@ -1,0 +1,54 @@
+# This is a one-time Job for this schema version. Change its name for each new migration.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: taskpulse-db-migrate-v2
+spec:
+  backoffLimit: 2
+  activeDeadlineSeconds: 300
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: migrate
+          image: 400790842570.dkr.ecr.ap-south-1.amazonaws.com/taskpulse-backend:v2
+          imagePullPolicy: IfNotPresent
+          command: ["python", "migrate.py"]
+          envFrom:
+            - configMapRef:
+                name: taskpulse-db
+            - secretRef:
+                name: db-admin-credentials
+          env:
+            - name: DB_SSLMODE
+              value: verify-full
+            - name: DB_AUTH_MODE
+              value: password
+            - name: DB_ENABLE_RDS_IAM_ROLE
+              value: "true"
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 250m
+              memory: 256Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: tmp
+          emptyDir: {}

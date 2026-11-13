@@ -1,0 +1,8 @@
+# Replace the host with the RDS endpoint from Terraform output before applying.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: taskpulse-db
+data:
+  DB_HOST: REPLACE_WITH_RDS_HOST
+  DB_NAME: taskpulse
