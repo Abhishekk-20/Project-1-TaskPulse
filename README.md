@@ -44,15 +44,16 @@ Implement health checks, resource limits and Kubernetes availability controls.
 
 Practice infrastructure deployment, troubleshooting, security and teardown.
 
----
+
+-- Diagram 
+
+---<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/f89df5dd-522a-48ac-9923-390f38a2f8e2" />
+
 
 ---
 
 ---
 
----
-
----
 
 Architecture
 
@@ -914,6 +915,9 @@ This confirms the application can persist data through its backend and PostgreSQ
 TaskPulse demonstrates an end-to-end cloud-native deployment using AWS, Terraform, Docker, Kubernetes, and managed AWS services.
 
 The project provides practical experience in building, deploying, securing, monitoring, troubleshooting, and cleaning up a multi-tier application in the cloud.
+
+<img width="1366" height="669" alt="image" src="https://github.com/user-attachments/assets/59cdcb07-1a3f-4123-8e5e-ca074b465f65" />
+
 
 **Live Application:** [https://taskpulse.smokebyte.space](https://taskpulse.smokebyte.space)
 
