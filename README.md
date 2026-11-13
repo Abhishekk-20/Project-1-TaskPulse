@@ -1,925 +1,321 @@
-# TaskPulse --- Production-Style 3-Tier Application on AWS EKS
+# TaskPulse
 
-A containerized task-management application deployed on Amazon EKS, with a React frontend, Flask backend, PostgreSQL database, Cognito authentication, and an AWS Application Load Balancer.
+A production-style, three-tier task-management application deployed on Amazon EKS. TaskPulse uses a React frontend, Flask API, PostgreSQL database, Amazon Cognito authentication, and an AWS Application Load Balancer.
 
-## Project Overview
+- **Live application:** [taskpulse.smokebyte.space](https://taskpulse.smokebyte.space)
+- **AWS region:** `ap-south-1`
 
-TaskPulse is a three-tier task-management application designed to demonstrate how a modern containerized application can be deployed and operated on AWS.
+> **Cost and safety:** Deploying this project can create billable AWS resources. Review Terraform plans before applying, protect credentials and state, and follow the teardown guidance before removing infrastructure.
 
-The application separates the presentation, application logic, and database layers.
+## Overview
 
----
+TaskPulse demonstrates a cloud-native application lifecycle: build container images, provision AWS infrastructure with Terraform, deploy workloads to Kubernetes, authenticate users with Cognito, and connect privately to a managed PostgreSQL database.
 
-**Layer**   **Technology**           **Responsibility**
+| Layer | Technologies | Responsibility |
+| --- | --- | --- |
+| Frontend | React, Vite, Nginx | User interface and API requests |
+| Backend | Python, Flask, Gunicorn | API and application logic |
+| Database | Amazon RDS, PostgreSQL | Persistent application data |
+| Platform | Docker, Amazon ECR, Amazon EKS, Kubernetes | Build, store, and run application containers |
+| Infrastructure and access | Terraform, Cognito, AWS Load Balancer Controller, ALB | Provisioning, authentication, and ingress |
 
----
+## Architecture
 
-Frontend    React, Vite, Nginx       User interface and API requests
+![TaskPulse AWS architecture](https://github.com/user-attachments/assets/f89df5dd-522a-48ac-9923-390f38a2f8e2)
 
-Backend     Python, Flask, Gunicorn  Application APIs and business logic
+Request flow:
 
-## Database    Amazon RDS PostgreSQL    Persistent application data
-
-The application runs on Amazon EKS. Container images are stored in Amazon ECR. Amazon Cognito provides user authentication, and an Application Load Balancer provides external HTTPS access.
-
-### 
-
-### Project objectives
-
-Build and containerize a full-stack application.
-
-Provision AWS infrastructure using Terraform.
-
-Deploy containers to Kubernetes on Amazon EKS.
-
-Store container images in Amazon ECR.
-
-Connect Kubernetes workloads securely to PostgreSQL.
-
-Configure authentication using Amazon Cognito.
-
-Expose the application through an HTTPS Application Load Balancer.
-
-Implement health checks, resource limits and Kubernetes availability controls.
-
-Practice infrastructure deployment, troubleshooting, security and teardown.
-
-
--- Diagram 
-
----<img width="1672" height="941" alt="image" src="https://github.com/user-attachments/assets/f89df5dd-522a-48ac-9923-390f38a2f8e2" />
-
-
----
-
----
-
-
-Architecture
-
-The application uses the following request flow:
-
-```
-                         Internet
-                            |
-                            |
-                  taskpulse.smokebyte.space
-                            |
-                     GoDaddy DNS
-                            |
-                            v
-                AWS Application Load Balancer
-                       HTTPS :443
-                            |
-                  Cognito Authentication
-                            |
-                            v
-                    Frontend Service
-                            |
-                     Frontend Pods
-                       React / Nginx
-                            |
-                     /api requests
-                            |
-                            v
-                     Backend Service
-                            |
-                     Backend Pods
-                     Flask / Gunicorn
-                            |
-                   PostgreSQL connection
-                            |
-                            v
-                    Amazon RDS PostgreSQL
-                     Private subnets
-
-
-
-
-
-
-
-
-
-
-
+```text
+Internet
+  -> taskpulse.smokebyte.space (GoDaddy DNS)
+  -> AWS Application Load Balancer (HTTPS)
+  -> Amazon Cognito authentication
+  -> Frontend Service and React/Nginx pods
+  -> /api requests to Backend Service and Flask/Gunicorn pods
+  -> Amazon RDS PostgreSQL in private subnets
 ```
 
-## Technology Stack
+## Repository layout
 
-**Category**             **Tools and services**
-
----
-
-Frontend                 React 18, Vite, Nginx Backend                  Python, Flask, Gunicorn Database                 Amazon RDS, PostgreSQL 15 Containers               Docker Container registry       Amazon ECR Orchestration            Kubernetes, Amazon EKS Infrastructure as Code   Terraform Authentication           Amazon Cognito Load balancing           AWS Application Load Balancer TLS                      AWS Certificate Manager Workload permissions     EKS Pod Identity, IAM DNS                      GoDaddy DNS Monitoring and logs      Amazon CloudWatch, Kubernetes logs Operating environment    Linux
-
-## Repository Structure
-
-```
-taskpulse/
-│
-├── backend/
-│   ├── app.py
-│   ├── Dockerfile
-│   ├── migrate.py
-│   ├── requirements.txt
-│   └── migrations/
-│       └── 001_create_items.sql
-│
-├── frontend/
-│   ├── Dockerfile
-│   ├── index.html
-│   ├── nginx.conf
-│   ├── package.json
-│   ├── package-lock.json
-│   └── src/
-│       ├── App.jsx
-│       ├── index.css
-│       └── main.jsx
-│
-├── terraform-infra/
-│   ├── backend.tf
-│   ├── budget.tf
-│   ├── cloudwatch.tf
-│   ├── cognito.tf
-│   ├── ecr.tf
-│   ├── eks.tf
-│   ├── learning.tfvars.example
-│   ├── output.tf
-│   ├── rds.tf
-│   ├── versions.tf
-│   └── vpc.tf
-│
-├── k8s/
-│   ├── availability.yaml
-│   ├── backend.yaml
-│   ├── db-connection.yaml
-│   ├── db-migration.yaml
-│   ├── frontend.yaml
-│   ├── taskpulse-ingress.yaml
-│   └── taskpulse-ingress-production.yaml
-│
-├── iam/
-│   ├── iam_policy.json
-│   └── pod-identity-trust-policy.json
-│
-├── docs/
-│   └── architecture.md
-│
-├── docker-compose.yml
-├── infra.webp
-├── siteimage.png
-├
+```text
+.
+├── backend/                 Flask API, Dockerfile, and SQL migrations
+├── frontend/                React app, Dockerfile, and Nginx configuration
+├── terraform-infra/         Terraform configuration for AWS infrastructure
+├── k8s/                     Kubernetes workloads, database jobs, and ingress
+├── iam/                     IAM policy and Pod Identity trust policy
+├── docs/                    Architecture documentation
+├── docker-compose.yml       Local container orchestration
 └── README.md
 ```
 
-## 5. Application Features
-
-### Frontend
-
-React-based task-management interface.
-
-Built using Vite.
-
-Served through Nginx.
-
-Communicates with the backend through `/api/`.
-
-Runs as a non-root container.
-
-Uses a writable temporary volume for Nginx runtime files.
-
-### Backend
-
-Flask REST API.
-
-Gunicorn application server.
-
-PostgreSQL database integration.
-
-IAM database authentication support.
-
-TLS verification for database connections.
-
-Health and readiness endpoints.
-
-Important API endpoints:
-
-**Endpoint**                   **Purpose**
-
----
-
-`/livez`                       Liveness check `/readyz`                      Readiness check `/health`                      Application health `/api/items`                   Retrieve task items `POST /api/items`              Create an item `PUT /api/items/<id>/status`   Update item status
-
-### Database
-
-PostgreSQL hosted on Amazon RDS.
-
-Private network access.
-
-Application database: `taskpulse`.
-
-Database schema initialized through a Kubernetes migration job.
-
-Application database authentication configured for IAM where supported by the deployment configuration.
-
 ## Prerequisites
 
-Before deploying, install and configure:
+Install and configure the tools needed for your chosen deployment steps:
 
-AWS CLI
+- Git
+- AWS CLI and access to the intended AWS account
+- Terraform
+- Docker
+- `kubectl`
+- Helm
+- `jq` (for the example Secrets Manager command)
 
-Terraform
+`eksctl` may also be useful for EKS administration. Check installed tools and your AWS identity:
 
-Docker
-
-kubectl
-
-eksctl
-
-Helm
-
-Git
-
-Verify the tools:
-
-```
+```bash
 aws --version
 terraform version
 docker --version
 kubectl version --client
-eksctl version
 helm version
-git --version
-```
-
-Configure AWS credentials:
-
-```
-aws configure
-```
-
-Verify the AWS identity and region:
-
-```
 aws sts get-caller-identity
 aws configure get region
 ```
 
-The expected deployment region is:
+The example deployment uses `ap-south-1`. Confirm the account and region before creating resources.
 
-```
-ap-south-1
+## Local development
 
+The repository includes a Docker Compose configuration. From the project root, inspect `docker-compose.yml` and follow its service configuration to start the local stack:
 
-
-
-Deployment Order
-```
-
-Deploy the application in this order. Do not skip infrastructure or identity setup.
-
----
-
-**Phase**   **Task**
-
----
-
-1           Verify AWS account, tools and Terraform configuration
-
-2           Configure Terraform backend and variables
-
-3           Provision VPC, subnets, EKS, RDS, ECR and Cognito
-
-4           Configure kubectl and verify the EKS cluster
-
-5           Configure EKS Pod Identity and IAM permissions
-
-6           Build frontend and backend Docker images
-
-7           Push images to Amazon ECR
-
-8           Configure database connection and run migrations
-
-9           Install AWS Load Balancer Controller
-
-10          Deploy backend and frontend Kubernetes resources
-
-11          Configure ingress, ACM certificate and Cognito authentication
-
-12          Configure GoDaddy DNS
-
-## 13          Verify the application end to end
-
-### Step 1 --- Clone the repository
-
-```
-git clone YOUR_GITHUB_REPOSITORY_URL
-cd taskpulse
+```bash
+docker compose up --build
 ```
 
-Replace the URL with the actual repository URL after pushing this project to GitHub.
+Stop the stack with `Ctrl+C`, then run:
 
-### Step 2 --- Configure Terraform
-
+```bash
+docker compose down
 ```
+
+## AWS deployment
+
+The manifests and Terraform inputs contain deployment-specific names and values. Before applying anything, compare the commands below with the current files in `terraform-infra/`, `k8s/`, and `iam/`. Replace placeholders with values from your own deployment; do not reuse historical resource IDs or secrets.
+
+### 1. Configure Terraform and review the plan
+
+```bash
 cd terraform-infra
-terraform init
-```
-
-Inspect the supplied example variables before creating your own configuration:
-
-```
+cat backend.tf
 cat learning.tfvars.example
-```
-
-Configure the required values using the variables defined in the Terraform files. Do not copy example settings blindly into a production deployment.
-
-Validate and review:
-
-```
+terraform init
 terraform fmt -recursive
 terraform validate
+```
+
+Configure the required variables using the project’s Terraform definitions. Keep real values in an ignored local file, not in Git. Review the plan before applying:
+
+```bash
 terraform plan
-```
-
-Review the plan carefully before applying it.
-
-### Provision AWS infrastructure
-
-```
 terraform apply
-```
-
-Confirm the proposed changes before proceeding.
-
-Record the Terraform outputs:
-
-```
 terraform output
 ```
 
-Keep sensitive outputs private. Do not commit Terraform state, secret values or generated credentials to GitHub.
+Use the variable-file convention required by the current configuration. Terraform state and outputs may contain sensitive data; do not publish them. Return to the repository root when done:
 
-### Build and push container images
-
-### Authenticate Docker with ECR
-
-Set the AWS account ID and region:
-
+```bash
+cd ..
 ```
+
+### 2. Connect to EKS and verify the cluster
+
+Use the actual cluster name from the Terraform configuration or outputs:
+
+```bash
+aws eks update-kubeconfig --region ap-south-1 --name taskpulse-cluster
+kubectl cluster-info
+kubectl get nodes -o wide
+```
+
+Verify the EKS Pod Identity Agent and the backend service-account association. If Terraform manages an add-on or association, inspect and reuse that configuration rather than creating a duplicate.
+
+### 3. Build and push container images
+
+Authenticate Docker to the ECR registry for the intended account and region:
+
+```bash
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 AWS_REGION=ap-south-1
-```
 
-Authenticate:
-
-```
-aws ecr get-login-password --region "$AWS_REGION" \
-  | docker login \
-    --username AWS \
-    --password-stdin \
+a ws ecr get-login-password --region "$AWS_REGION" \
+  | docker login --username AWS --password-stdin \
     "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com"
 ```
 
-### 9.2 Build Backend Image
+Build and push the frontend and backend images using the exact repository names and tags referenced in the Kubernetes manifests. For example, inspect them with:
 
-```
-docker build --platform linux/amd64 \
-  -t taskpulse-backend:v2 ./backend
-```
-
-Tag the image:
-
-```
-docker tag taskpulse-backend:v2 \
-  "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/taskpulse-backend:v2"
+```bash
+grep -RIn 'image:' k8s/
 ```
 
-Push the image:
+Then build, tag, and push each image to the matching ECR repository. Do not overwrite an existing immutable image tag.
 
-```
-docker push \
-  "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/taskpulse-backend:v2"
-```
+### 4. Configure database access and run migrations
 
-### 9.3 Build Frontend Image
+Before migration, verify that RDS is available, the endpoint and database name are correct, and network access is restricted to the intended workloads. Do not expose PostgreSQL to `0.0.0.0/0`.
 
-```
-docker build --platform linux/amd64 \
-  -t taskpulse-frontend:v2 ./frontend
-```
+Inspect the database and migration manifests before applying them:
 
-Tag the image:
-
-```
-docker tag taskpulse-frontend:v2 \
-  "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/taskpulse-frontend:v2"
+```bash
+cat k8s/db-connection.yaml
+cat k8s/db-migration.yaml
 ```
 
-Push the image:
+Apply the database configuration if its values match your environment. The database administrator credentials should be handled through the intended secret-management flow. Never print or commit secret values.
 
-```
-docker push \
-  "$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/taskpulse-frontend:v2"
-```
+After confirming connectivity, credentials, image tag, and service account, run the migration job:
 
-Verify repository images:
-
-```
-aws ecr describe-images \
-  --repository-name taskpulse-backend \
-  --region ap-south-1
-aws ecr describe-images \
-  --repository-name taskpulse-frontend \
-  --region ap-south-1
-
-
-
-
-Configure Database Connectivity
-```
-
-The backend connects to PostgreSQL hosted on Amazon RDS.
-
-Retrieve the RDS endpoint from Terraform outputs:
-
-```
-cd terraform-infra
-terraform output
-cd ..
-```
-
-Create the database ConfigMap using your actual RDS endpoint:
-
-```
-kubectl create configmap taskpulse-db \
-  --from-literal=DB_HOST=YOUR_RDS_ENDPOINT \
-  --from-literal=DB_NAME=taskpulse \
-  --dry-run=client -o yaml | kubectl apply -f -
-```
-
-### Create Database Credentials Secret
-
-The database administrator credentials are stored in AWS Secrets Manager.
-
-Retrieve the secret ARN from Terraform:
-
-```
-cd terraform-infra
-terraform output -raw secrets_manager_arn
-cd ..
-```
-
-Create the Kubernetes Secret without displaying the password:
-
-```
-SECRET_ARN=$(cd terraform-infra && terraform output -raw secrets_manager_arn)
-
-aws secretsmanager get-secret-value \
-  --secret-id "$SECRET_ARN" \
-  --query SecretString \
-  --output text \
-| jq -r '"DB_USER=\(.username)\nDB_PASSWORD=\(.password)"' \
-| kubectl create secret generic db-admin-credentials \
-    --from-env-file=/dev/stdin \
-    --dry-run=client -o yaml \
-| kubectl apply -f -
-```
-
-Verify only the Secret metadata:
-
-```
-kubectl get secret db-admin-credentials
-```
-
-Never print the secret values or commit them to source control.
-
-## Configure EKS Pod Identity
-
-The backend uses EKS Pod Identity to obtain AWS permissions for IAM database authentication.
-
-Check the Pod Identity Agent:
-
-```
-aws eks describe-addon \
-  --cluster-name taskpulse-cluster \
-  --addon-name eks-pod-identity-agent \
-  --region ap-south-1
-```
-
-Check the backend service account:
-
-```
-kubectl get serviceaccount taskpulse-backend
-```
-
-Verify the association:
-
-```
-aws eks list-pod-identity-associations \
-  --cluster-name taskpulse-cluster \
-  --region ap-south-1
-```
-
-The backend service account must be associated with the intended IAM role.
-
-## Run Database Migration
-
-The project uses a Kubernetes Job to initialize the PostgreSQL schema.
-
-Apply the migration manifest:
-
-```
+```bash
 kubectl apply -f k8s/db-migration.yaml
-```
-
-Check Job status:
-
-```
 kubectl get jobs
-```
-
-Check migration logs:
-
-```
 kubectl logs job/taskpulse-db-migrate-v2
 ```
 
-Expected successful migration message:
+Confirm the Job completed successfully before deploying the application.
 
-```
-Applied 001_create_items.sql
-```
+### 5. Deploy the application
 
-This migration creates the application database objects and application database role.
+Apply the manifests after checking their image references, namespaces, service accounts, and configuration:
 
-## Deploy Application to Kubernetes
-
-### 13.1 Deploy Backend
-
-Apply the backend manifest:
-
-```
+```bash
 kubectl apply -f k8s/backend.yaml
-```
-
-Check backend pods:
-
-```
-kubectl get pods -l app=taskpulse-backend
-```
-
-Wait for rollout:
-
-```
 kubectl rollout status deployment/taskpulse-backend
-```
 
-Check backend logs:
-
-```
-kubectl logs deployment/taskpulse-backend --tail=50
-```
-
-### 13.2 Deploy Frontend
-
-Apply the frontend manifest:
-
-```
 kubectl apply -f k8s/frontend.yaml
-```
-
-Check frontend pods:
-
-```
-kubectl get pods -l app=taskpulse-frontend
-```
-
-Wait for rollout:
-
-```
 kubectl rollout status deployment/taskpulse-frontend
-```
 
-### 13.3 Apply Availability Policies
-
-```
 kubectl apply -f k8s/availability.yaml
 ```
 
-Check deployments:
+Check pods, services, and recent application logs:
 
-```
-kubectl get deployments
-```
-
-Check services:
-
-```
-kubectl get services
-```
-
-Expected application services:
-
-`frontend-service`
-
-`Backend-service`
-
-## Install AWS Load Balancer Controller
-
-The AWS Load Balancer Controller manages AWS Application Load Balancers through Kubernetes Ingress resources.
-
-### 14.1 Create IAM Policy
-
-Download the official AWS Load Balancer Controller IAM policy:
-
-```
-mkdir -p iam
-cd iam
-
-curl -fL \
-  -o iam_policy.json \
-  https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.14.1/docs/install/iam_policy.json
-```
-
-Validate JSON:
-
-```
-jq empty iam_policy.json
-```
-
-Create the IAM policy:
-
-```
-aws iam create-policy \
-  --policy-name AWSLoadBalancerControllerIAMPolicy \
-  --policy-document file://iam_policy.json
-```
-
-### 14.2 Create IAM Role
-
-The controller requires an IAM role trusted by the EKS Pod Identity service.
-
-Create the trust policy:
-
-```
-cat > pod-identity-trust-policy.json <<'EOF'
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "pods.eks.amazonaws.com"
-      },
-      "Action": [
-        "sts:AssumeRole",
-        "sts:TagSession"
-      ],
-      "Condition": {
-        "StringEquals": {
-          "aws:SourceAccount": "YOUR_AWS_ACCOUNT_ID"
-        },
-        "ArnLike": {
-          "aws:SourceArn": "arn:aws:eks:ap-south-1:YOUR_AWS_ACCOUNT_ID:cluster/taskpulse-cluster"
-        }
-      }
-    }
-  ]
-}
-EOF
-```
-
-Replace the account ID with your own AWS account ID.
-
-Create the role and attach the controller policy:
-
-```
-aws iam create-role \
-  --role-name taskpulse-aws-load-balancer-controller \
-  --assume-role-policy-document file://pod-identity-trust-policy.json
-aws iam attach-role-policy \
-  --role-name taskpulse-aws-load-balancer-controller \
-  --policy-arn arn:aws:iam::YOUR_AWS_ACCOUNT_ID:policy/AWSLoadBalancerControllerIAMPolicy
-```
-
-### 14.3 Create Service Account and Pod Identity Association
-
-```
-kubectl create serviceaccount aws-load-balancer-controller \
-  --namespace kube-system
-```
-
-Create the association:
-
-```
-aws eks create-pod-identity-association \
-  --cluster-name taskpulse-cluster \
-  --namespace kube-system \
-  --service-account aws-load-balancer-controller \
-  --role-arn arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/taskpulse-aws-load-balancer-controller \
-  --region ap-south-1
-```
-
-### 14.4 Install Using Helm
-
-```
-helm repo add eks https://aws.github.io/eks-charts
-helm repo update eks
-```
-
-Install the controller:
-
-```
-helm install aws-load-balancer-controller \
-  eks/aws-load-balancer-controller \
-  --namespace kube-system \
-  --version 1.14.0 \
-  --set clusterName=taskpulse-cluster \
-  --set region=ap-south-1 \
-  --set vpcId=YOUR_VPC_ID \
-  --set serviceAccount.create=false \
-  --set serviceAccount.name=aws-load-balancer-controller
-```
-
-Verify installation:
-
-```
-kubectl get deployment aws-load-balancer-controller -n kube-system
-kubectl get pods -n kube-system | grep aws-load-balancer-controller
-
-
-
-Configure HTTPS and Cognito Authentication
-```
-
-Amazon Cognito is used to authenticate users before they access the application through the ALB.
-
-The Cognito integration requires:
-
-User Pool ARN.
-
-App Client ID.
-
-App Client Secret.
-
-Cognito domain.
-
-Correct callback and logout URLs.
-
-The ALB Cognito callback URL must be:
-
-```
-https://taskpulse.smokebyte.space/oauth2/idpresponse
-```
-
-The Cognito app client must have a generated client secret.
-
-The Ingress manifest is:
-
-```
-k8s/taskpulse-ingress-production.yaml
-```
-
-Review the Cognito annotation and certificate ARN before applying it.
-
-Apply Ingress:
-
-```
-kubectl apply -f k8s/taskpulse-ingress-production.yaml
-```
-
-Check Ingress:
-
-```
-kubectl get ingress
-```
-
-Wait for ALB provisioning:
-
-```
-kubectl describe ingress taskpulse
-```
-
-The ALB should have:
-
-Internet-facing scheme.
-
-HTTP listener on port 80.
-
-HTTPS listener on port 443.
-
-ACM certificate.
-
-Cognito authentication.
-
-Frontend target group.
-
-## 16. Configure GoDaddy DNS
-
-The application domain is:
-
-```
-taskpulse.smokebyte.space
-```
-
-After the ALB is created, retrieve its DNS name:
-
-```
-kubectl get ingress taskpulse
-```
-
-In GoDaddy DNS management, create a CNAME record:
-
-**Field**   **Value**
-
----
-
-Type        CNAME Name        taskpulse Value       YOUR\_ALB\_DNS\_NAME TTL         600 seconds
-
-Do not change your domain nameservers for this configuration.
-
-Verify DNS:
-
-```
-dig +short taskpulse.smokebyte.space
-```
-
-## 17. Validate the Application
-
-### 17.1 Verify HTTPS
-
-```
-curl -I https://taskpulse.smokebyte.space
-```
-
-An unauthenticated request should redirect to the Cognito hosted login page.
-
-### 17.2 Verify Frontend
-
-Open:
-
-[https://taskpulse.smokebyte.space](https://taskpulse.smokebyte.space)
-
-Log in using a Cognito user account.
-
-### 17.3 Verify Backend API
-
-Use an authenticated browser session to test the application API.
-
-Check backend health:
-
-```
-kubectl port-forward svc/backend-service 5000:5000
-```
-
-In another terminal:
-
-```
-curl http://localhost:5000/readyz
-```
-
-Expected response:
-
-```
-{
-  "status": "ok"
-}
-```
-
-### 17.4 Verify Kubernetes
-
-```
+```bash
 kubectl get pods -o wide
 kubectl get deployments
 kubectl get services
-kubectl get ingress
-```
-
-### 17.5 Verify Application Logs
-
-```
-kubectl logs deployment/taskpulse-frontend --tail=50
 kubectl logs deployment/taskpulse-backend --tail=50
+kubectl logs deployment/taskpulse-frontend --tail=50
 ```
 
-### 17.6 Verify Database Persistence
+### 6. Install the AWS Load Balancer Controller and configure ingress
 
-Create a task in the application, update its status, refresh the browser, and verify that the changes remain available.
+Check whether the controller’s IAM policy, role, service account, and Pod Identity association already exist before creating them. Use the official IAM policy compatible with the controller version and the EKS cluster. The Helm chart version and controller application version are distinct; verify their compatibility.
 
-This confirms the application can persist data through its backend and PostgreSQL database.
+Review the controller settings, including cluster name, region, VPC ID, service account, and subnet tags. Once the controller is ready, inspect `k8s/taskpulse-ingress-production.yaml` and verify the ACM certificate, Cognito settings, hostname, and ALB annotations before applying:
 
-## Conclusion
+```bash
+kubectl apply -f k8s/taskpulse-ingress-production.yaml
+kubectl get ingress
+kubectl describe ingress taskpulse
+```
 
-TaskPulse demonstrates an end-to-end cloud-native deployment using AWS, Terraform, Docker, Kubernetes, and managed AWS services.
+The Cognito callback URL configured for this example is:
 
-The project provides practical experience in building, deploying, securing, monitoring, troubleshooting, and cleaning up a multi-tier application in the cloud.
+```text
+https://taskpulse.smokebyte.space/oauth2/idpresponse
+```
 
-<img width="1366" height="669" alt="image" src="https://github.com/user-attachments/assets/59cdcb07-1a3f-4123-8e5e-ca074b465f65" />
+Do not commit Cognito client secrets or user credentials.
 
+### 7. Configure DNS and validate the deployment
 
-**Live Application:** [https://taskpulse.smokebyte.space](https://taskpulse.smokebyte.space)
+Wait for the ALB to be provisioned and its targets to become healthy. Then create or update the GoDaddy CNAME for `taskpulse.smokebyte.space` to point to the **current** ALB DNS name. The ALB hostname can change if it is recreated.
 
-**AWS Region:** `ap-south-1`
+```bash
+dig +short taskpulse.smokebyte.space
+curl -I https://taskpulse.smokebyte.space
+```
 
+An unauthenticated redirect to Cognito is expected when ALB authentication is enabled. It does not by itself confirm that the API or database is working.
+
+## Validation
+
+After signing in through Cognito:
+
+1. Confirm the frontend loads without browser errors.
+2. Create and update a task, then refresh to check persistence.
+3. Check backend readiness and application logs.
+4. Confirm Kubernetes pods are healthy and the ALB targets remain healthy.
+
+Useful Kubernetes checks:
+
+```bash
+kubectl get pods -A -o wide
+kubectl get deployments
+kubectl get services
+kubectl get ingress
+kubectl get jobs
+kubectl get pdb
+kubectl logs deployment/taskpulse-backend --tail=100
+kubectl logs deployment/taskpulse-frontend --tail=100
+```
+
+The backend defines `/livez`, `/readyz`, and `/health` checks. To test a service locally, confirm the service name and port in `k8s/backend.yaml`, then port-forward and request the relevant endpoint.
+
+## Security and cost notes
+
+- Never commit AWS credentials, database passwords, Cognito client secrets, private keys, real Kubernetes Secrets, Terraform state, or populated `terraform.tfvars` files.
+- Keep RDS private and restrict database ingress to the intended workload security group.
+- Grant IAM roles only the permissions required by their workloads.
+- Review Terraform plans, especially resource replacements and deletions, before applying.
+- AWS resources such as EKS, RDS, NAT Gateways, and load balancers can incur ongoing charges.
+
+Ensure `.gitignore` excludes local state and secrets. At minimum, consider:
+
+```gitignore
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+terraform.tfvars
+*.auto.tfvars
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+node_modules/
+dist/
+.DS_Store
+```
+
+## Troubleshooting checklist
+
+- **Pods are not starting:** inspect `kubectl describe pod <pod-name>` and the pod logs; check image names, tags, configuration, and resource limits.
+- **Database connection fails:** verify the RDS endpoint, database configuration, security-group rules, credentials, TLS settings, and workload IAM permissions.
+- **Migration fails:** inspect the Job status and logs; verify that the database is reachable and the migration image and secret references match the manifests.
+- **Ingress or ALB is not ready:** inspect the Ingress events and controller logs; verify IAM permissions, subnet tags, certificate status, and target health.
+- **Cognito login fails:** verify the user pool, app client, domain, callback and logout URLs, and the ingress annotations.
+- **DNS is not resolving:** confirm the CNAME points to the current ALB DNS name and allow time for DNS propagation.
+
+## Teardown
+
+Destroying resources can permanently delete data. Back up the database first if its contents must be retained. Remove the Kubernetes Ingress and wait for its ALB resources to be cleaned up before destroying the infrastructure. Remove separately managed IAM resources only after confirming they belong exclusively to this deployment.
+
+From `terraform-infra`, select and verify the intended workspace, then review the destroy plan carefully:
+
+```bash
+terraform workspace show
+terraform plan -destroy
+```
+
+Only after confirming every planned deletion is correct:
+
+```bash
+terraform destroy
+```
+
+Do not use broad account-wide deletion commands. Preserve the Terraform state backend until the environment is confirmed destroyed and no other environment depends on it.
+
+## Project image
+
+![TaskPulse application](https://github.com/user-attachments/assets/59cdcb07-1a3f-4123-8e5e-ca074b465f65)
+
+---
+
+TaskPulse is a learning project for practicing full-stack development, infrastructure as code, Kubernetes operations, AWS security, and responsible cloud resource management.
